@@ -1,14 +1,13 @@
-# Use OpenJDK 24
-FROM openjdk:24-jdk
-
-# Set working directory inside the container
+# Use Maven + JDK image to build
+FROM maven:3.9.3-openjdk-24 AS build
 WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Copy the jar file into the container
-COPY target/WhisperVault-0.0.1-SNAPSHOT.jar app.jar
-
-# Expose the port your Spring Boot app will run on
+# Use lightweight JDK image to run
+FROM openjdk:24-jdk
+WORKDIR /app
+COPY --from=build /app/target/WhisperVault-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
-
-# Run the Spring Boot jar
-ENTRYPOINT ["java", "-jar", "app.jar"]
+CMD ["java", "-jar", "app.jar"]
