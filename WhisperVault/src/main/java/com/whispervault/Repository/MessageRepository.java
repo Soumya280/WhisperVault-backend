@@ -2,8 +2,9 @@ package com.whispervault.Repository;
 
 import java.util.List;
 
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.whispervault.Entity.Message;
@@ -11,7 +12,11 @@ import com.whispervault.Entity.Message;
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Integer> {
 
-    List<Message> findAllByUserId(Integer attribute, Sort sort);
+    @Query("SELECT m FROM Message m JOIN FETCH m.user WHERE m.user.id = :userId ORDER BY m.createdAt DESC")
+    List<Message> findAllByUserIdWithUser(@Param("userId") Integer userId);
+
+    @Query("SELECT m FROM Message m JOIN FETCH m.user ORDER BY m.createdAt DESC")
+    List<Message> findAllWithUser();
 
     Integer countByUserId(Integer userId);
 

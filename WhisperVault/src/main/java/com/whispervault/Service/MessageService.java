@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -31,9 +30,8 @@ public class MessageService {
 
     public ResponseEntity<?> getAllPosts() {
         try {
-            List<AllPosts> posts = messageRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+            List<AllPosts> posts = messageRepository.findAllWithUser()
                     .stream()
-                    .filter(post -> post.getUser() != null)
                     .map(post -> new AllPosts(
                             post.getMessageId(),
                             post.getUser().getId(),
@@ -43,10 +41,12 @@ public class MessageService {
                             post.getCreatedAt() != null ? post.getCreatedAt().toString() : null,
                             post.getEdited()))
                     .toList();
+
             return ResponseEntity.ok(posts);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error retrieving posts" + e.getMessage());
+                    .body("Error retrieving posts: " + e.getMessage());
         }
     }
 
@@ -170,22 +170,25 @@ public class MessageService {
             }
 
             List<MyPosts> myPosts = messageRepository
-                    .findAllByUserId(user.getId(), Sort.by(Sort.Direction.DESC, "createdAt"))
+                    .findAllByUserIdWithUser(user.getId())
                     .stream()
                     .map(post -> new MyPosts(
                             post.getMessageId(),
                             post.getTitle(),
                             post.getContent(),
-                            post.getCreatedAt().toString(),
+                            post.getCreatedAt() != null ? post.getCreatedAt().toString() : null,
                             post.getEdited()))
                     .toList();
 
             if (myPosts.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No posts found");
             }
+
             return ResponseEntity.ok(myPosts);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error retrieving your posts");
+            e.printStackTrace(); // log the actual stacktrace for debugging
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving your posts: " + e.getMessage());
         }
     }
 
