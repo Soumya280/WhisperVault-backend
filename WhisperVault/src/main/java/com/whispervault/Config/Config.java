@@ -2,6 +2,7 @@ package com.whispervault.Config;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -29,12 +30,15 @@ import com.whispervault.Service.CustomUserDetailsService;
 @EnableWebSecurity
 public class Config {
 
+    @Value("${CORS_URLS}")
+    private String CORS_URLS;
+
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**").allowedOriginPatterns("http://localhost:5173", "https://soumya280.github.io")
+                registry.addMapping("/**").allowedOriginPatterns(CORS_URLS)
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS").allowedHeaders("*")
                         .allowCredentials(true);
             }
@@ -115,11 +119,13 @@ public class Config {
         return new CustomUserDetailsService();
     }
 
+    @SuppressWarnings("deprecation")
     @Bean
     public PasswordEncoder passwordEncoder() {
         return NoOpPasswordEncoder.getInstance();
     }
 
+    @SuppressWarnings("deprecation")
     @Bean
     public DaoAuthenticationProvider daoAuthenticationProvider(
             UserDetailsService userDetailsService,
