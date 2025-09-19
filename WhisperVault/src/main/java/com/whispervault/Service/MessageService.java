@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.whispervault.DTO.MessageDTO.AllPosts;
 import com.whispervault.DTO.MessageDTO.EditMessage;
+import com.whispervault.DTO.MessageDTO.EditedMessageResponse;
 import com.whispervault.DTO.MessageDTO.MyPosts;
 import com.whispervault.DTO.MessageDTO.NewMessage;
 import com.whispervault.Entity.Message;
@@ -109,9 +110,22 @@ public class MessageService {
             message.setEdited(true);
 
             Message updatedMessage = messageRepository.save(message);
-            return ResponseEntity.ok(updatedMessage);
+
+            // Map to DTO
+            EditedMessageResponse dto = new EditedMessageResponse(
+                    updatedMessage.getMessageId(),
+                    updatedMessage.getTitle(),
+                    updatedMessage.getContent(),
+                    updatedMessage.getEdited(),
+                    updatedMessage.getUser().getUsername() // user info safe here since we accessed it in session
+            );
+
+            return ResponseEntity.ok(dto);
+
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error updating message");
+            e.printStackTrace(); // log full stacktrace for debugging
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error updating message: " + e.getMessage());
         }
     }
 
