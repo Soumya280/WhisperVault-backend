@@ -79,6 +79,7 @@ public class MessageService {
         }
     }
 
+    @Transactional
     public ResponseEntity<?> editMessage(EditMessage editMessage) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -105,25 +106,26 @@ public class MessageService {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Content cannot be empty");
             }
 
+            String username = message.getUser().getUsername();
+
             message.setTitle(editMessage.getTitle());
             message.setContent(editMessage.getContent().trim());
             message.setEdited(true);
 
             Message updatedMessage = messageRepository.save(message);
 
-            // Map to DTO
+            // Map to Response DTO
             EditedMessageResponse dto = new EditedMessageResponse(
                     updatedMessage.getMessageId(),
                     updatedMessage.getTitle(),
                     updatedMessage.getContent(),
                     updatedMessage.getEdited(),
-                    updatedMessage.getUser().getUsername() // user info safe here since we accessed it in session
-            );
+                    username);
 
             return ResponseEntity.ok(dto);
 
         } catch (Exception e) {
-            e.printStackTrace(); // log full stacktrace for debugging
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error updating message: " + e.getMessage());
         }
