@@ -45,7 +45,8 @@ public class MessageService {
                     .toList();
             return ResponseEntity.ok(posts);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error retrieving posts");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving posts" + e.getMessage());
         }
     }
 
