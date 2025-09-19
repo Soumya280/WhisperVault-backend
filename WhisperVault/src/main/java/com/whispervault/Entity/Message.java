@@ -9,7 +9,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 
 @Entity
@@ -28,7 +27,6 @@ public class Message {
 
     private String title;
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String content;
 
