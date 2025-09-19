@@ -91,7 +91,7 @@ public class MessageService {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
-            Optional<Message> optionalMessage = messageRepository.findById(editMessage.getMessageId());
+            Optional<Message> optionalMessage = messageRepository.findByIdWithUser(editMessage.getMessageId());
             if (optionalMessage.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Message not found");
             }
