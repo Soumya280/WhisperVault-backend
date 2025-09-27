@@ -4,19 +4,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import com.whispervault.Security.JsonAuthFilter;
@@ -28,30 +25,52 @@ import jakarta.servlet.http.HttpSession;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    // ---- UserDetailsService Bean ----
+    @Bean
+    public UserDetailsService userDetailsService() {
+        return new CustomUserDetailsService();
+    }
+
+    // ---- PasswordEncoder Bean -------
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(); // Safe password hashing
+    }
+
+    // ---- DaoAuthenticationProvider ---------
+    @Bean
+    public DaoAuthenticationProvider daoAuthenticationProvider(
+            UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) {
+
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+        return provider;
+    }
+
+    // ---- AuthenticationManager -----
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
+            AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
     }
 
+    // ---- Security Filter Chain -----
     @Bean
-    public SecurityContextRepository securityContextRepository() {
-        HttpSessionSecurityContextRepository repository = new HttpSessionSecurityContextRepository();
-        repository.setSpringSecurityContextKey("SPRING_SECURITY_CONTEXT");
-        return repository;
-    }
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationManager authManager,
+            DaoAuthenticationProvider authProvider) throws Exception {
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity security, AuthenticationManager authManager,
-            AuthenticationProvider authProvider, SecurityContextRepository securityContextRepository) throws Exception {
-
+        // Custom JSON login filter
         JsonAuthFilter jsonFilter = new JsonAuthFilter();
         jsonFilter.setAuthenticationManager(authManager);
         jsonFilter.setFilterProcessesUrl("/login");
 
         jsonFilter.setAuthenticationSuccessHandler((request, response, authentication) -> {
             HttpSession session = request.getSession();
-            session.setMaxInactiveInterval(30 * 60);
+            session.setMaxInactiveInterval(30 * 60); // 30 min
             response.setStatus(HttpStatus.OK.value());
             response.setContentType("application/json");
             response.getWriter().write("{\"message\": \"Login successful\"}");
@@ -63,12 +82,12 @@ public class SecurityConfig {
             response.getWriter().write("{\"error\": \"Login failed: " + exception.getMessage() + "\"}");
         });
 
-        security
+        http
                 .cors(cors -> {
-                })
+                }) // Uses CorsConfigurationSource bean
                 .authenticationProvider(authProvider)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/home", "/login", "/signup", "/logout", "/getuser")
+                        .requestMatchers("/", "/home", "/login", "/signup", "/logout")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
@@ -89,33 +108,8 @@ public class SecurityConfig {
                         })
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID", "XSRF-TOKEN")
-                        .permitAll())
-                .securityContext(securityContext -> securityContext
-                        .securityContextRepository(securityContextRepository)
-                        .requireExplicitSave(false));
+                        .permitAll());
 
-        return security.build();
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return new CustomUserDetailsService();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
-    }
-
-    @Bean
-    public DaoAuthenticationProvider daoAuthenticationProvider(
-            UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-
-        DaoAuthenticationProvider daoAuthProvider = new DaoAuthenticationProvider();
-        daoAuthProvider.setUserDetailsService(userDetailsService);
-        daoAuthProvider.setPasswordEncoder(passwordEncoder);
-
-        return daoAuthProvider;
+        return http.build();
     }
 }
