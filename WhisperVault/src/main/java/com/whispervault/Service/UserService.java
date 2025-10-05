@@ -96,7 +96,7 @@ public class UserService {
             currentUser.setEmail(update.getEmail().trim());
             currentUser.setUsername(update.getUsername().trim());
             currentUser.setAlias(update.getAlias() != null ? update.getAlias().trim() : update.getUsername().trim());
-            currentUser.setPassword(update.getPassword()); // No encoding - stored as plain text
+            currentUser.setPassword(update.getPassword());
 
             User updatedUser = userRepository.save(currentUser);
             return ResponseEntity.ok(updatedUser);
@@ -116,7 +116,7 @@ public class UserService {
 
             User user = userRepository.findByUsername(auth.getName());
             if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                return ResponseEntity.ok(Map.of("user", null));
             }
 
             UserProfile profile = new UserProfile();

@@ -196,10 +196,6 @@ public class MessageService {
                             post.getEdited()))
                     .toList();
 
-            if (myPosts.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No posts found");
-            }
-
             return ResponseEntity.ok(myPosts);
         } catch (Exception e) {
             e.printStackTrace(); // log the actual stacktrace for debugging

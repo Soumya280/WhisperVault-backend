@@ -1,29 +1,51 @@
 package com.whispervault.Config;
 
+import java.util.Arrays;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.whispervault.Security.JsonAuthFilter;
 import com.whispervault.Service.CustomUserDetailsService;
-
-import jakarta.servlet.http.HttpSession;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Value("${CORS_URLS}")
+    private String[] CORS_URLS;
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(Arrays.asList(CORS_URLS));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowCredentials(true);
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(Arrays.asList("X-XSRF-TOKEN"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 
     // ---- UserDetailsService Bean ----
     @Bean
@@ -34,7 +56,7 @@ public class SecurityConfig {
     // ---- PasswordEncoder Bean -------
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // Safe password hashing
+        return NoOpPasswordEncoder.getInstance();
     }
 
     // ---- DaoAuthenticationProvider ---------
@@ -61,51 +83,39 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             AuthenticationManager authManager,
-            DaoAuthenticationProvider authProvider) throws Exception {
-
-        // Custom JSON login filter
-        JsonAuthFilter jsonFilter = new JsonAuthFilter();
-        jsonFilter.setAuthenticationManager(authManager);
-        jsonFilter.setFilterProcessesUrl("/login");
-
-        jsonFilter.setAuthenticationSuccessHandler((request, response, authentication) -> {
-            HttpSession session = request.getSession();
-            session.setMaxInactiveInterval(30 * 60); // 30 min
-            response.setStatus(HttpStatus.OK.value());
-            response.setContentType("application/json");
-            response.getWriter().write("{\"message\": \"Login successful\"}");
-        });
-
-        jsonFilter.setAuthenticationFailureHandler((request, response, exception) -> {
-            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Login failed: " + exception.getMessage() + "\"}");
-        });
-
+            DaoAuthenticationProvider authProvider, CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
-                .cors(cors -> {
-                }) // Uses CorsConfigurationSource bean
+                .cors(Customizer.withDefaults())
                 .authenticationProvider(authProvider)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/home", "/login", "/signup", "/logout")
                         .permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**")
+                        .permitAll()
                         .anyRequest()
                         .authenticated())
-                .addFilterAt(jsonFilter, UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                         .sessionFixation()
                         .migrateSession())
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers("/login", "/signup"))
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .successHandler((request, response, authentication) -> {
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"status\": \"ok\"}");
+                        })
+                        .failureHandler((request, response, exception) -> {
+                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\": \"Invalid credentials\"}");
+                        })
+                        .permitAll())
+
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessHandler((request, response, authentication) -> {
-                            response.setStatus(HttpStatus.OK.value());
-                            response.setContentType("application/json");
-                            response.getWriter().write("{\"message\": \"Logout successful\"}");
-                        })
+                        .logoutSuccessUrl("/")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID", "XSRF-TOKEN")
                         .permitAll());

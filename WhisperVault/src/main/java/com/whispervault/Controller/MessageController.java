@@ -21,7 +21,7 @@ public class MessageController {
     @Autowired
     private MessageService messageService;
 
-    @GetMapping({ "/", "/home" })
+    @GetMapping({ "/home" })
     public ResponseEntity<?> getAllPosts() {
         return messageService.getAllPosts();
     }
