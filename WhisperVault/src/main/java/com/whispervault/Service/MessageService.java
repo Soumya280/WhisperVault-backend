@@ -6,8 +6,6 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,12 +51,7 @@ public class MessageService {
 
     public ResponseEntity<?> postMessage(NewMessage newMessage) {
         try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || !auth.isAuthenticated()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-
-            User user = userService.getUserByUsername(auth.getName());
+            User user = userService.getCurrentUserDetails();
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
@@ -82,12 +75,8 @@ public class MessageService {
     @Transactional
     public ResponseEntity<?> editMessage(EditMessage editMessage) {
         try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || !auth.isAuthenticated()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
 
-            User user = userService.getUserByUsername(auth.getName());
+            User user = userService.getCurrentUserDetails();
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
@@ -134,12 +123,8 @@ public class MessageService {
     @Transactional
     public ResponseEntity<?> deleteMessage(Integer messageId) {
         try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || !auth.isAuthenticated()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
 
-            User user = userService.getUserByUsername(auth.getName());
+            User user = userService.getCurrentUserDetails();
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
@@ -175,12 +160,8 @@ public class MessageService {
 
     public ResponseEntity<?> getMyPosts() {
         try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || !auth.isAuthenticated()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
 
-            User user = userService.getUserByUsername(auth.getName());
+            User user = userService.getCurrentUserDetails();
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
@@ -206,11 +187,6 @@ public class MessageService {
 
     public ResponseEntity<?> upvote(Integer messageId) {
         try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || !auth.isAuthenticated()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-
             // Upvote logic to be implemented later
             return ResponseEntity.ok("Upvote functionality to be implemented for message ID: " + messageId);
         } catch (Exception e) {

@@ -1,0 +1,57 @@
+package com.whispervault.Controller;
+
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.whispervault.DTO.UserDTO.Credentials;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+
+@RestController
+public class AuthController {
+
+    private final AuthenticationManager authManager;
+
+    public AuthController(AuthenticationManager authManager) {
+        this.authManager = authManager;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody Credentials credentials, HttpServletRequest request) {
+        try {
+            Authentication auth = authManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            credentials.username(),
+                            credentials.password()));
+
+            // Get the security context and set the authentication
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(auth);
+            SecurityContextHolder.setContext(context);
+
+            // ✅ GET THE SESSION AND SAVE THE SECURITY CONTEXT
+            HttpSession session = request.getSession(true);
+            session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Login successful",
+                    "username", credentials.username()));
+        } catch (BadCredentialsException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid username or password"));
+        }
+    }
+}

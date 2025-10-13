@@ -15,6 +15,10 @@ import org.springframework.web.bind.annotation.PutMapping;
 @RestController
 public class UserController {
 
+    public UserController() {
+        System.out.println("✅ UserController loaded successfully!");
+    }
+
     @Autowired
     private UserService userService;
 
@@ -30,7 +34,7 @@ public class UserController {
 
     @GetMapping("/getuser")
     public ResponseEntity<?> getUser() {
-        return userService.getUser();
+        return userService.getCurrentUser();
     }
 
 }

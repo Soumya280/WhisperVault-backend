@@ -5,8 +5,11 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,16 +28,47 @@ public class UserService {
     @Autowired
     private MessageRepository messageRepository;
 
-    public User getUserByUsername(String username) {
-        return userRepository.findByUsername(username);
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    private User getUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 
-    public User getCurrentUser() {
+    // returns an User object to be used by other methods
+    public User getCurrentUserDetails() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            return userRepository.findByUsername(authentication.getName());
+
+        if (authentication == null ||
+                !authentication.isAuthenticated() ||
+                authentication instanceof AnonymousAuthenticationToken) {
+            return null;
         }
-        return null;
+
+        return getUserByUsername(authentication.getName());
+    }
+
+    // return read only response entity.
+    public ResponseEntity<?> getCurrentUser() {
+        try {
+            User user = getCurrentUserDetails();
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            UserProfile profile = new UserProfile(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getUsername(),
+                    user.getAlias(),
+                    messageRepository.countByUserId(user.getId()));
+
+            return ResponseEntity.ok(profile);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to retrieve user"));
+        }
     }
 
     @Transactional
@@ -54,7 +88,7 @@ public class UserService {
             user.setEmail(signup.getEmail().trim());
             user.setUsername(signup.getUsername().trim());
             user.setAlias(signup.getAlias() != null ? signup.getAlias().trim() : signup.getUsername().trim());
-            user.setPassword(signup.getPassword()); // No encoding - stored as plain text
+            user.setPassword(passwordEncoder.encode(signup.getPassword()));
 
             User newUser = userRepository.save(user);
             return ResponseEntity.status(HttpStatus.CREATED).body(newUser);
@@ -73,7 +107,7 @@ public class UserService {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
-            User currentUser = userRepository.findByUsername(auth.getName());
+            User currentUser = getCurrentUserDetails();
             if (currentUser == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
@@ -107,39 +141,10 @@ public class UserService {
         }
     }
 
-    public ResponseEntity<?> getUser() {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || !auth.isAuthenticated()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-
-            User user = userRepository.findByUsername(auth.getName());
-            if (user == null) {
-                return ResponseEntity.ok(Map.of("user", null));
-            }
-
-            UserProfile profile = new UserProfile();
-
-            profile.setId(user.getId());
-            profile.setEmail(user.getEmail());
-            profile.setUsername(user.getUsername());
-            profile.setAlias(user.getAlias());
-            profile.setMessages(messageRepository.countByUserId(user.getId()));
-
-            return ResponseEntity.ok(profile);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to retrieve user"));
-        }
-    }
-
     public ResponseEntity<?> getUserById(Integer userId) {
         try {
-            User user = userRepository.findById(userId).orElse(null);
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
             return ResponseEntity.ok(user);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
