@@ -67,9 +67,20 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfTokenRepository.setCookieCustomizer(cookie -> {
+            cookie.sameSite("None");
+            cookie.secure(true);
+        });
+        return csrfTokenRepository;
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            DaoAuthenticationProvider authProvider)
+            DaoAuthenticationProvider authProvider,
+            CookieCsrfTokenRepository csrfTokenRepository)
             throws Exception {
 
         http
@@ -78,7 +89,7 @@ public class SecurityConfig {
                         /* to disable csrf uncomment the next line. */
                         // .disable()
 
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRepository(csrfTokenRepository)
                         .ignoringRequestMatchers("/login", "/signup"))
 
                 .authenticationProvider(authProvider)
