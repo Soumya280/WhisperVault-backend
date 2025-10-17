@@ -15,7 +15,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -29,7 +28,7 @@ import com.whispervault.Service.CustomUserDetailsService;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173}")
+    @Value("${CORS_URLS}")
     private String[] CORS_URLS;
 
     @Bean
@@ -38,29 +37,12 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(CORS_URLS));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("X-XSRF-TOKEN"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-
-    @Bean
-    public CookieCsrfTokenRepository cookieCsrfTokenRepository() {
-        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-        repository.setCookieCustomizer(cookie -> {
-            cookie.secure(false);
-            cookie.sameSite("Lax");
-            cookie.path("/");
-        });
-        return repository;
-    }
-
-    // @Bean
-    // public CookieSameSiteSupplier applicationCookieSameSiteSupplier() {
-    // return CookieSameSiteSupplier.ofNone();
-    // }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
@@ -72,6 +54,7 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    @SuppressWarnings("deprecation")
     @Bean
     public DaoAuthenticationProvider daoAuthenticationProvider(
             CustomUserDetailsService userDetailsService,
@@ -92,26 +75,24 @@ public class SecurityConfig {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(cookieCsrfTokenRepository())
-                        .ignoringRequestMatchers("/login", "/signup", "/getuser"))
+                        /* to disable csrf uncomment the next line. */
+                        // .disable()
+
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers("/login", "/signup"))
 
                 .authenticationProvider(authProvider)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/home", "/login", "/signup", "/logout")
+                        .requestMatchers("/", "/home", "/login", "/signup")
                         .permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .formLogin(form -> form.disable())
-                .logout(logout -> logout
-                        .logoutUrl("/logout")
-                        .logoutSuccessUrl("/login")
-                        .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID", "XSRF-TOKEN")
-                        .permitAll());
+                .logout(logout -> logout.disable());
 
         return http.build();
     }

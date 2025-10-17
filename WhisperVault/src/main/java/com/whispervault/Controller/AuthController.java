@@ -3,6 +3,7 @@ package com.whispervault.Controller;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -17,7 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.whispervault.DTO.UserDTO.Credentials;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 @RestController
@@ -54,4 +57,41 @@ public class AuthController {
                     .body(Map.of("error", "Invalid username or password"));
         }
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            // Clear Security Context first
+            SecurityContextHolder.clearContext();
+
+            // Invalidate session
+            HttpSession session = request.getSession(false);
+            if (session != null) {
+                session.invalidate();
+            }
+
+            // Clear JSESSIONID cookie
+            Cookie jsessionCookie = new Cookie("JSESSIONID", "");
+            jsessionCookie.setPath("/");
+            jsessionCookie.setMaxAge(0);
+            jsessionCookie.setHttpOnly(true);
+            response.addCookie(jsessionCookie);
+
+            // Clear XSRF-TOKEN cookie
+            Cookie xsrfCookie = new Cookie("XSRF-TOKEN", "");
+            xsrfCookie.setPath("/");
+            xsrfCookie.setMaxAge(0);
+            response.addCookie(xsrfCookie);
+
+            // Return proper JSON response
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("message", "Logged out successfully"));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Logout failed"));
+        }
+    }
+
 }
