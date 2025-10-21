@@ -27,7 +27,7 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Value("http://localhost:5173")
+    @Value("${CORS_URLS}")
     private String[] CORS_URLS;
 
     @Bean
