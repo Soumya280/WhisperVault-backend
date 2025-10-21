@@ -1,0 +1,17 @@
+com\whispervault\Repository\UserRepository.class
+com\whispervault\Service\MessageService$EditedMessageResponse.class
+com\whispervault\Entity\User.class
+com\whispervault\Service\MessageService$MyPosts.class
+com\whispervault\DTO\UserDTO\Signup.class
+com\whispervault\Service\UserService$UserProfile.class
+com\whispervault\DTO\MessageDTO\EditMessage.class
+com\whispervault\Service\UserService.class
+com\whispervault\Service\MessageService$AllPosts.class
+com\whispervault\Controller\UserController.class
+com\whispervault\Controller\MessageController.class
+com\whispervault\Entity\Message.class
+com\whispervault\Repository\MessageRepository.class
+com\whispervault\Config\SecurityConfig.class
+com\whispervault\Service\MessageService.class
+com\whispervault\DTO\MessageDTO\NewMessage.class
+com\whispervault\WhisperVaultApplication.class
