@@ -45,7 +45,7 @@ public class MessageService {
                             post.alias(),
                             post.title(),
                             post.content(),
-                            post.createdAt() != null ? post.createdAt().toString() : null,
+                            post.createdAt(),
                             post.edited()))
                     .toList();
 
