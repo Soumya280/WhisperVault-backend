@@ -10,7 +10,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Integer> {
@@ -35,7 +34,7 @@ public interface MessageRepository extends JpaRepository<Message, Integer> {
         u.alias,
         m.title,
         m.content,
-        FUNCTION('DATE_FORMAT', m.createdAt, '%Y-%m-%d %H:%i:%s'),
+        CAST(FUNCTION('DATE_FORMAT', m.createdAt, '%Y-%m-%d %H:%i:%s') AS string),
         m.edited
     )
     FROM Message m
