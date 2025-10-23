@@ -163,7 +163,7 @@ public class MessageService {
                             post.messageId(),
                             post.title(),
                             post.content(),
-                            post.createdAt() != null ? post.createdAt().toString() : null,
+                            post.createdAt() != null ? post.createdAt() : null,
                             post.edited()))
                     .toList();
 
