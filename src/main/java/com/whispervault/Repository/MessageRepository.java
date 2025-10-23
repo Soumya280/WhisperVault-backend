@@ -34,7 +34,7 @@ public interface MessageRepository extends JpaRepository<Message, Integer> {
         u.alias,
         m.title,
         m.content,
-        CAST(FUNCTION('DATE_FORMAT', m.createdAt, '%Y-%m-%d %H:%i:%s') AS string),
+        m.createdAt,
         m.edited
     )
     FROM Message m
