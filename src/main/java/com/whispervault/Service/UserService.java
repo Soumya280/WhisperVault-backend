@@ -35,7 +35,7 @@ public class UserService {
             String email,
             String username,
             String alias,
-            Integer messages) {
+            Integer messageCount) {
     }
 
     private User getUserByUsername(String username) {
@@ -56,9 +56,6 @@ public class UserService {
         return getUserByUsername(authentication.getName());
     }
 
-
-
-    // return read only response entity.
     public ResponseEntity<?> getCurrentUser() {
         try {
             User user = getCurrentUserDetails();

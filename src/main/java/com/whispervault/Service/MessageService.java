@@ -3,7 +3,9 @@ package com.whispervault.Service;
 import java.util.List;
 import java.util.Optional;
 
+import com.whispervault.DTO.MessageDTO.AllPosts;
 import com.whispervault.DTO.MessageDTO.EditMessage;
+import com.whispervault.DTO.MessageDTO.MyPosts;
 import com.whispervault.DTO.MessageDTO.NewMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.whispervault.Entity.Message;
 import com.whispervault.Entity.User;
 import com.whispervault.Repository.MessageRepository;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class MessageService {
@@ -32,36 +35,18 @@ public class MessageService {
             String username
     ) {}
 
-    private record AllPosts(
-            Integer messageId,
-            Integer userId,
-            String alias,
-            String title,
-            String content,
-            String createdAt,
-            Boolean edited
-    ) {}
-
-    private record MyPosts(
-            Integer messageId,
-            String title,
-            String content,
-            String createdAt,
-            Boolean edited
-    ) {}
-
     public ResponseEntity<?> getAllPosts() {
         try {
-            List<AllPosts> posts = messageRepository.findAllWithUser()
+            List<AllPosts> posts = messageRepository.findAllWithUserDetails()
                     .stream()
                     .map(post -> new AllPosts(
-                            post.getMessageId(),
-                            post.getUser().getId(),
-                            post.getUser().getUsername(),
-                            post.getTitle(),
-                            post.getContent(),
-                            post.getCreatedAt() != null ? post.getCreatedAt().toString() : null,
-                            post.getEdited()))
+                            post.messageId(),
+                            post.userId(),
+                            post.alias(),
+                            post.title(),
+                            post.content(),
+                            post.createdAt() != null ? post.createdAt().toString() : null,
+                            post.edited()))
                     .toList();
 
             return ResponseEntity.ok(posts);
@@ -103,13 +88,12 @@ public class MessageService {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
-            Optional<Message> optionalMessage = messageRepository.findByIdWithUser(editMessage.messageId());
-            if (optionalMessage.isEmpty()) {
+            Message realMessage = messageRepository.findByIdWithUser(editMessage.messageId());
+            if (realMessage == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Message not found");
             }
 
-            Message message = optionalMessage.get();
-            if (!message.getUser().getId().equals(user.getId())) {
+            if (!realMessage.getUser().getId().equals(user.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not authorized to edit this message");
             }
 
@@ -117,13 +101,13 @@ public class MessageService {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Content cannot be empty");
             }
 
-            String username = message.getUser().getUsername();
+            String username = realMessage.getUser().getUsername();
 
-            message.setTitle(editMessage.title());
-            message.setContent(editMessage.content().trim());
-            message.setEdited(true);
+            realMessage.setTitle(editMessage.title());
+            realMessage.setContent(editMessage.content().trim());
+            realMessage.setEdited(true);
 
-            Message updatedMessage = messageRepository.save(message);
+            Message updatedMessage = messageRepository.save(realMessage);
 
             EditedMessageResponse response = new EditedMessageResponse(
                     updatedMessage.getMessageId(),
@@ -150,12 +134,9 @@ public class MessageService {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
-            Optional<Message> optionalMessage = messageRepository.findById(messageId);
-            if (optionalMessage.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Message not found");
-            }
+            Message message = messageRepository.findById(messageId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message not found"));
 
-            Message message = optionalMessage.get();
             if (!message.getUser().getId().equals(user.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not authorized to delete this message");
             }
@@ -164,6 +145,32 @@ public class MessageService {
             return ResponseEntity.ok("Message deleted successfully");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error deleting message");
+        }
+    }
+
+    public ResponseEntity<?> getMyPosts() {
+        try {
+
+            User user = userService.getCurrentUserDetails();
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            List<MyPosts> myPosts = messageRepository
+                    .findAllByUserId(user.getId())
+                    .stream()
+                    .map(post -> new MyPosts(
+                            post.messageId(),
+                            post.title(),
+                            post.content(),
+                            post.createdAt() != null ? post.createdAt().toString() : null,
+                            post.edited()))
+                    .toList();
+
+            return ResponseEntity.ok(myPosts);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving your posts: " + e.getMessage());
         }
     }
 
@@ -179,35 +186,11 @@ public class MessageService {
         }
     }
 
-    public ResponseEntity<?> getMyPosts() {
-        try {
-
-            User user = userService.getCurrentUserDetails();
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-
-            List<MyPosts> myPosts = messageRepository
-                    .findAllByUserIdWithUser(user.getId())
-                    .stream()
-                    .map(post -> new MyPosts(
-                            post.getMessageId(),
-                            post.getTitle(),
-                            post.getContent(),
-                            post.getCreatedAt() != null ? post.getCreatedAt().toString() : null,
-                            post.getEdited()))
-                    .toList();
-
-            return ResponseEntity.ok(myPosts);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error retrieving your posts: " + e.getMessage());
-        }
-    }
 
     public ResponseEntity<?> upvote(Integer messageId) {
         try {
             // Upvote logic to be implemented later
+
             return ResponseEntity.ok("Upvote functionality to be implemented for message ID: " + messageId);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing upvote");

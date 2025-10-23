@@ -1,6 +1,8 @@
 package com.whispervault.Repository;
 
 
+import com.whispervault.DTO.MessageDTO.AllPosts;
+import com.whispervault.DTO.MessageDTO.MyPosts;
 import com.whispervault.Entity.Message;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,15 +15,37 @@ import java.util.Optional;
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Integer> {
 
-    @Query("SELECT m FROM Message m JOIN FETCH m.user WHERE m.user.id = :userId")
-    List<Message> findAllByUserIdWithUser(@Param("userId") Integer userId);
+    @Query("""
+    SELECT new com.whispervault.DTO.MessageDTO.MyPosts(
+        m.messageId,
+        m.title,
+        m.content,
+        m.createdAt,
+        m.edited
+    )
+    FROM Message m
+    WHERE m.user.id = :userId
+    """)
+    List<MyPosts> findAllByUserId(@Param("userId") Integer userId);
 
-    @Query("SELECT m FROM Message m JOIN FETCH m.user")
-    List<Message> findAllWithUser();
+    @Query("""
+    SELECT new com.whispervault.DTO.MessageDTO.AllPosts(
+        m.messageId,
+        u.id,
+        u.alias,
+        m.title,
+        m.content,
+        FUNCTION('DATE_FORMAT', m.createdAt, '%Y-%m-%d %H:%i:%s'),
+        m.edited
+    )
+    FROM Message m
+    JOIN m.user u
+    """)
+    List<AllPosts> findAllWithUserDetails();
 
     Integer countByUserId(Integer userId);
 
     @Query("SELECT m FROM Message m JOIN FETCH m.user WHERE m.messageId = :id")
-    Optional<Message> findByIdWithUser(@Param("id") Integer id);
+    Message findByIdWithUser(@Param("id") Integer id);
 
 }
