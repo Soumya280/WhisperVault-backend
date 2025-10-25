@@ -69,7 +69,7 @@ public class MessageService {
 
             Message message = new Message();
             message.setTitle(newMessage.title());
-            message.setContent(newMessage.title().trim());
+            message.setContent(newMessage.content().trim());
             message.setUser(user);
 
             messageRepository.save(message);
